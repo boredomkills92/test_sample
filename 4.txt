@@ -1,0 +1,65 @@
+from rest_framework import serializers
+
+from .models import Dweet
+from .models import DweetRelation
+from .models import Comments
+from userprofile.models import UserProfile
+
+class CommentSerializer(serializers.ModelSerializer):
+    """
+    serializer for Dweet model
+    """
+
+    class Meta:
+        """
+        configures serializer for model and the fields to be serialized
+        """
+        model = Comments
+        fields = ('id','commented_user','comment','commented_at','dweet')
+        extra_kwargs = {'commented_user':{'read_only':True}}
+
+class DweetSerializer_(serializers.Serializer):
+    """
+    serializer for Dweet model
+    """
+
+    Dweet = serializers.CharField(max_length=240)
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ('username',)
+        extra_kwargs = {'username':{'read_only':True}}
+        
+
+class DweetSerializer(serializers.ModelSerializer):
+    """
+    serializer for Dweet model
+    """
+
+    class Meta:
+        model = Dweet
+        fields = ('dweet_text',)
+
+class DweetRelationSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    dweet = DweetSerializer()
+
+    class Meta:
+        """
+        configures serializer for model and the fields to be serialized
+        """        
+        model = DweetRelation
+        fields = ('id','user','dweet')
+        extra_kwargs = {'user':{'read_only':True} }
+
+    def create(self, validated_data):            
+        user = self.context.get("request").user.username
+        dweet = validated_data['dweet']['dweet_text']
+
+        user = UserProfile.objects.get(username=user)
+        dweet = Dweet.objects.create( dweet_text = dweet)    
+        dweetrelation = DweetRelation.objects.create(user = user , dweet = dweet)
+        dweetrelation.save()
+
+        return dweetrelation

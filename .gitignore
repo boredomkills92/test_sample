@@ -1,0 +1,11 @@
+static_prod/*
+logs/*
+dwitter/settings/__pycache__
+*/__pycache__
+*/dweetfeed/dweets/migrations/*
+*/migrations/*
+
+proj.sublime-project
+proj.sublime-workspace
+
+env_d

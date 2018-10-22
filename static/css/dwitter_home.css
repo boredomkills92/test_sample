@@ -1,0 +1,17 @@
+html, body {
+    background-color: #cccccc;
+    font-size: 13px !important;
+}
+
+.ntime{
+    font-size: .7em
+}
+
+.userlink{
+	padding-left: 0;
+	font-size: 1.2em
+}
+
+.scomment{
+    border: 1px groove #e6e6e6;
+}

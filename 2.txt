@@ -1,0 +1,156 @@
+from django.shortcuts import render
+from django.core.exceptions import ObjectDoesNotExist
+
+from rest_framework import viewsets
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import filters
+
+from .serializers import DweetSerializer
+from .serializers import CommentSerializer
+
+
+from .models import Dweet
+from .models import DweetRelation
+from .models import Comments
+from .permissions import PostOwnDweet
+
+from userprofile.models import UserProfile
+
+# Create your views here.
+
+class DweetViewSet(viewsets.ViewSet):
+    """
+    provides crude rest api calls for Dweet
+    """
+    
+    authentication_classes = (TokenAuthentication, )
+    permission_classes = (PostOwnDweet, IsAuthenticated, )
+
+    serializer_class = DweetSerializer
+    queryset = DweetRelation.objects.all()
+    
+    filter_backends = (filters.SearchFilter, )
+    search_fields = ('dweet_text')
+
+    def list(slef, request):
+        dweets = DweetRelation.objects.all()
+
+        username= request.user.email
+        print(username)
+
+        my_dweets = []
+        for dweet in dweets:
+            dwt = {}       
+            dwt['id'] = dweet.id
+            dwt['username'] = dweet.user.email
+            dwt['dweet'] = dweet.dweet.dweet_text
+            dwt['dweet_time'] = dweet.dweet_created_at
+            dwt['dweet_last_updated'] = dweet.dweet_last_updated            
+            
+            my_dweets.append(dwt)
+
+        return Response(my_dweets)
+
+    def create(self, request):
+        """
+        Creates new dweet for the user
+        """
+
+        dweet = request.data
+        serializer = DweetSerializer(dweet)
+
+        if serializer.is_valid:            
+            dweet_text = serializer.data.get('Dweet')
+
+            user = UserProfile.objects.get(email=request.user.email)
+            dweet = Dweet( dweet_text = dweet_text)
+            dweet.save()
+            dweetrelation = DweetRelation.objects.create(user = user , dweet = dweet)
+
+            dwt = {}
+            dwt['id'] = dweetrelation.id
+            dwt['username'] = dweetrelation.user.email
+            dwt['dweet'] = dweetrelation.dweet.dweet_text
+            dwt['dweet_time'] = dweetrelation.dweet_created_at
+            dwt['dweet_last_updated'] = dweetrelation.dweet_last_updated
+
+            message = "Dweet is posted."
+            return Response(dwt)
+        else:
+            return Response(serializer.errors, status = status.HTTP_BAD_REQUEST)
+
+    def retrieve(self, request, pk=None):
+        """
+        retrives one dweet based on request
+        """
+
+        try:
+            dweetrelation = DweetRelation.objects.get(pk=pk)
+            dwt = {}
+            dwt['id'] = dweetrelation.id
+            dwt['username'] = dweetrelation.user.email
+            dwt['dweet'] = dweetrelation.dweet.dweet_text
+            dwt['dweet_time'] = dweetrelation.dweet_created_at
+            dwt['dweet_last_updated'] = dweetrelation.dweet_last_updated
+            return Response(dwt)
+        except ObjectDoesNotExist:
+            return Response(status = status.HTTP_404_NOT_FOUND)
+
+    def update(self, request, pk=None):
+        """
+        Edit and updates the Dweet
+        """
+
+        dweet = request.data
+        serializer = DweetSerializer(dweet)
+
+        if serializer.is_valid:            
+            dweet_text = serializer.data.get('Dweet')
+
+            try:
+                dweetrelation = DweetRelation.objects.get(pk=pk)
+                dweetrelation.dweet.dweet_text = dweet_text
+                dweetrelation.save()
+                dwt = {}
+                dwt['id'] = dweetrelation.id
+                dwt['username'] = dweetrelation.user.email
+                dwt['dweet'] = dweetrelation.dweet.dweet_text
+                dwt['dweet_time'] = dweetrelation.dweet_created_at
+                dwt['dweet_last_updated'] = dweetrelation.dweet_last_updated
+                return Response(dwt)
+            except ObjectDoesNotExist:
+                return Response(status = status.HTTP_404_NOT_FOUND)
+        else:
+            return Response(serializer.errors, status = status.HTTP_BAD_REQUEST)
+
+    def destroy(self, request, pk=None):
+        """
+        marks dweet for deletion. deletion will not be performed right away.
+        """
+
+        try:
+            dweetrelation = DweetRelation.objects.get(pk=pk)
+            dweetrelation.delete()
+        except ObjectDoesNotExist:
+            return Response(status = status.HTTP_204_NO_CONTENT)
+                       
+        return Response(status = status.HTTP_204_NO_CONTENT)
+
+class CommentViewSet(viewsets.ViewSet):
+    """
+    provides crude rest api calls for Comments
+    """
+
+    authentication_classes = (TokenAuthentication, )
+    permission_classes = (PostOwnDweet, IsAuthenticated, )
+
+    serializer_class = CommentSerializer
+    queryset = Comments.objects.all()
+
+    def perform_create(self, serializer):
+        serializer.save(commented_user=self.request.user)
+

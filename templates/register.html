@@ -1,0 +1,151 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}">
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+        <link rel="stylesheet" type="text/css" href="{% static 'css/dwitter.css' %}">
+        {% block title %}
+          <title>Dwitter Register</title>
+        {% endblock title %}
+
+    </head>
+    <body>
+
+
+  <div class="container-table">
+  <div class="vertical-center-row">
+    <div class=" container-table container" id="logincontainer" style="width:450px">
+        <form class=" form-horizontal vertical-center-row" id="registerform">
+            <div class="mt-2 row">
+            <div class="col-sm-6">
+            <div class="form-group">
+              <label class="control-label col-sm-12" for="username">User Name:</label>
+              <div class="col-sm-12">
+                <input type="text" class="form-control" name="username" id="username" placeholder="Enter user name">
+              </div>
+            </div>            
+            <div class="form-group">
+              <label class="control-label col-sm-2" for="password">Password:</label>
+              <div class="col-sm-12"> 
+                <input type="password" class="form-control" name="password" id="password" placeholder="Enter password">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="control-label col-sm-2" for="password1">Password:</label>
+              <div class="col-sm-12"> 
+                <input type="password" class="form-control" name="password1" id="password1" placeholder="Re-type password">
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="form-group">
+              <label class="control-label col-sm-2" for="email">Email:</label>
+              <div class="col-sm-12">
+                <input type="text" class="form-control" name="email" id="email" placeholder="Enter email">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="control-label col-sm-12" for="first_name">First name:</label>
+              <div class="col-sm-12">
+                <input type="text" class="form-control" name="first_name" id="first_name" placeholder="Enter first name">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="control-label col-sm-12" for="last_name">Last name:</label>
+              <div class="col-sm-12">
+                <input type="text" class="form-control" name="last_name" id="last_name" placeholder="Enter last name">
+              </div>
+            </div>
+          </div>
+        </div>
+            <div class="form-group"> 
+              <div class="col-sm-offset-2 col-sm-10">
+                <button type="submit" class="btn btn-default btn-sm" id="register">Register</button>                 
+              </div>
+            </div>            
+        </form>
+    </div>
+  </div>
+</div>
+
+        <!-- Optional JavaScript -->
+        <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+        <script src="{% static 'vendor/jquery/jquery-3.3.1.min.js' %}"></script>
+        <script src="{% static 'vendor/jquery/jquery.cookie.min.js' %}"></script>
+        <script src="{% static 'vendor/bootstrap/js/popper.min.js' %}"></script>
+        <script src="{% static 'vendor/bootstrap/js/bootstrap.min.js' %}"></script>
+        <script>
+            $( document ).ready(function() {
+              
+              checkAuth()              
+              function checkAuth(){
+                  if(getCookie("authtoken") != "null"){                     
+                    //window.location.replace("/home/");
+                  }
+              }
+
+              $("#registerform").submit(function(event) {
+                  // Stop the browser from submitting the form.
+                  event.preventDefault();
+
+                  form = $('#loginform');
+                  formData = $(form).serialize();
+                  username = $("#username").val()
+                  password = $("#password").val()
+                  password1 = $("#password1").val()
+                  email = $("#email").val()
+                  last_name = $("#last_name").val()
+                  first_name = $("#first_name").val()
+                  
+                  if(password != password1){
+                    alert("Password doesnt match")
+                    return
+                  }
+                  formData=$('#registerform').serialize()
+                  $.ajax({                      
+                      url: "/userapi/profile/",                 
+                      method: 'POST',
+                      contentType: 'application/json; charset=utf-8',
+                      data: JSON.stringify({
+                          'username': username,
+                          'password': password,
+                          'email': email,
+                          'last_name': last_name,
+                          'first_name': first_name,
+                           'phone': "",
+                           'profile_pic': null,
+                           'location':"",
+                            'dob' : null,
+                            'gender' : ""
+                          }),
+                      dataType: 'json',
+                      success: function(data){          
+                          console.log("Login? : " + data)   
+                          alert("Registration successfull. It will redirect to login page")
+                          window.location.replace("/home/");               
+                      },
+                      error: function(data){
+                          $.each(data, function(key,value){
+                              console.log(key + ": " + value)
+                          });
+                          
+                      }
+                  });
+              });
+
+              function getCookie(name){
+                    return $.cookie(name) 
+                }
+              
+            });
+           
+        </script>
+    </body>
+</html>

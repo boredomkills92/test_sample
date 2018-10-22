@@ -1,0 +1,501 @@
+{% load static %}
+{% load cacheops %}
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}">
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+        <link rel="stylesheet" type="text/css" href="{% static 'css/dwitter.css' %}">
+        {% block title %}
+          <title>Dwitter</title>
+        {% endblock title %}
+
+    </head>
+    <body>
+
+
+        {% block content %}
+          <div></div>
+        {% endblock content %}
+        <!-- Optional JavaScript -->
+        <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+        <script src="{% static 'vendor/jquery/jquery-3.3.1.min.js' %}"></script>
+        <script src="{% static 'vendor/jquery/jquery.cookie.min.js' %}"></script>
+        <script src="{% static 'vendor/bootstrap/js/popper.min.js' %}"></script>
+        <script src="{% static 'vendor/bootstrap/js/bootstrap.min.js' %}"></script>
+        <script>
+            $( document ).ready(function() {
+                
+                function checkAuth(){
+                    if(getCookie("authtoken") == "null"){
+                        window.location.replace("/");
+                    }
+                    if (getCookie("authtoken") == "undefined"){
+                        window.location.replace("/");
+                    }
+                }        
+
+                checkAuth();
+                loadDweets();
+
+                logmeout = function(){
+                    $.cookie("authtoken", null, { path: '/' });
+                    $.cookie("authuser_id", null, { path: '/' });
+                    $.cookie("authusername", null, { path: '/' });
+                    $.cookie("authemail", null, { path: '/' });
+                    console.log('loggedout')                    
+                    checkAuth()
+                }
+                followuser = function(element){
+                    eid = element.id
+                    fuser = eid.substring('user_'.length)
+                    $.ajax({
+                        headers: {
+                            Authorization :"Token " + getCookie("authtoken")
+                        },
+                        url: "/userapi/profile/"+ getCookie("authuser_id") +"/",
+                        method: 'PATCH',  
+                        contentType: "application/json; charset=utf-8",
+                        data: JSON.stringify({                        
+                            "following": [
+                                    fuser
+                                ]
+                            }),
+                        dataType: 'json',                      
+                        success: function(data){
+                            
+                            user = $("#funame_" + fuser).text()
+                            console.log("following " + $("#funame_" + fuser).html() )
+                            $("#dweetcontainer").prepend("<div>" +
+                                "<div class='alert alert-success alert-dismissible'> \
+                                    <a href='#' class='close' data-dismiss='alert' aria-label='close'>&times;</a>\
+                                    <strong>You are following "+ user +" now.!! </strong>  \
+                                </div> \
+                                </div>")
+                                      
+                        },
+                        error: function(data){
+                            console.log(data)
+                        }
+                    });           
+                }
+
+                getMyFollowers = function(){
+                    url = "followers=1"      ;
+                    peoplefollower(url)              
+                }
+
+                getMyFollowings = function(){    
+                    url = "following=1" ;
+                    peoplefollower(url)
+                }
+
+                function peoplefollower(query){
+                    if(query.length == 0){
+                        console.log('Invalid Input')
+                        return
+                    }
+                    url = "/userapi/profile/?"+ query
+                    $.ajax({
+                        headers: {
+                            Authorization :"Token " + getCookie("authtoken")
+                        },
+                        url: url,
+                        method: 'GET',                        
+                        success: function(data){
+                            if(query == "followers=1") {
+                                suc = "Your Followers"
+                                fail = "You dont have followers yet!!!"
+                            } 
+                            if(query == "following=1"){
+                                suc = "People you follow"
+                                fail = "You are not following anyone!!!"
+                            }
+                            if(data.length == 0){
+                                $("#dweetcontainer").prepend("<div>" +
+                                "<div class='alert alert-warning'> \
+                                    <strong>" +
+                                    fail + 
+                                "</strong> </div> \
+                                </div>")
+                            }else{
+                                $("#dweetcontainer").html('')  
+                                 $("#dweetcontainer").append("<div>" +
+                                "<div class='alert alert-warning'> \
+                                    <strong> " +
+                                    suc+ 
+                                " </strong> </div> \
+                                </div>")
+                                setMainContainerForPeople(data)       
+                            }
+                        },
+                        error: function(data){
+                            console.log(data)
+                        }
+                    });
+                }
+                loadMyDweets = function(){
+                    $.ajax({
+                    headers: {
+                        Authorization :"Token " + getCookie("authtoken")
+                    },
+                    url: "/dweetapi/dweet/?uid="+ getCookie("authuser_id"), 
+                    method: "GET",
+                    success: function(data){          
+                        console.log(data.length)
+                        $("#dweetcontainer").html('')
+                        if(data.length == 0){
+                            $("#dweetcontainer").append("<div>" +
+                                "<div class='alert alert-info'> \
+                                    <strong>Info!</strong> No Dweet Feeds are there from the people you follow.!! Starting Dweeting. :) \
+                                </div> \
+                                </div>")
+                        }else{
+                            $("#dweetcontainer").append("<div>" +
+                                "<div class='alert alert-warning'> \
+                                    <strong> My Dweets </strong>  \
+                                </div> \
+                                </div>")
+                            setMainContainer(data)
+                        }                        
+                    },
+                    error: function(data){
+                        console.log(data)
+                    }
+                    });
+                }
+                likeme = function(element){
+                    eid = element.id
+                    dweet_id_to_like = eid.substring('like_dweet_'.length)
+                    reacttodweet(dweet_id_to_like, 1)
+                }
+
+                dislikeme = function(element){
+                    eid = element.id
+                    dweet_id_to_like = eid.substring('dislike_dweet_'.length)
+                    reacttodweet(dweet_id_to_like, 0)
+                }
+
+                redweetme = function(element){
+                    eid = element.id
+                    redweet = eid.substring('redweet_'.length)
+                    $.ajax({
+                        headers: {
+                            Authorization :"Token " + getCookie("authtoken")
+                        },
+                        url: "/dweetapi/redweet/", 
+                        method: 'POST',
+                        contentType: "application/json; charset=utf-8",
+                        data: JSON.stringify({                        
+                                "dweet_id": parseInt(redweet)
+                            }),
+                        dataType: 'json',
+                        success: function(data){          
+                            console.log(data)
+                            loadDweets()                      
+                        },
+                        error: function(data){
+                            console.log(data)
+                        }
+                    });   
+                }
+
+                $("#searchdwitter").click(function(){
+                    searchtype= $("#searchtype").val()
+                    data = $("#dwittersearchdata").val()
+
+                    if(searchtype == 0){
+                        alert('Invalid search type')
+                    }else{
+                        if(data.length==0){
+                            alert("Plaese enter keywords to search")
+                        }else{
+                            $("#dweetcontainer").html('')
+                            fetchSearch(searchtype, data)
+                        }
+                    }
+                    return false
+                })
+
+                function fetchSearch(searchtype, data){ 
+                    
+                        if(searchtype==1){
+                            console.log("Dweet Search")  
+                            url = "/dweetapi/dweet/?search="+ data
+                            $.ajax({
+                                headers: {
+                                    Authorization :"Token " + getCookie("authtoken")                                   
+                                },
+                                url: url,
+                                method: 'GET',                        
+                                success: function(data){          
+                                    console.log(data)    
+                                    setMainContainer(data)                                        
+                                },
+                                error: function(data){
+                                    console.log(data)
+                                }
+                            });             
+                        }else if(searchtype==2){
+                            console.log("People Search")  
+                            url = "/userapi/profile/?search="+ data
+                            $.ajax({
+                                headers: {
+                                    Authorization :"Token " + getCookie("authtoken")
+                                },
+                                url: url,
+                                method: 'GET',                        
+                                success: function(data){          
+                                    console.log(data)    
+                                    $("#dweetcontainer").html('')  
+                                    setMainContainerForPeople(data)       
+                                },
+                                error: function(data){
+                                    console.log(data)
+                                }
+                            });
+                        }else{
+                            return
+                        }                
+                }
+
+
+                function reacttodweet(dweet_id, reaction){             
+                    $.ajax({
+                        headers: {
+                            Authorization :"Token " + getCookie("authtoken")
+                        },
+                        url: "/dweetapi/react/", 
+                        method: 'POST',
+                        contentType: "application/json; charset=utf-8",
+                        data: JSON.stringify({                        
+                                "dweet_id": parseInt(dweet_id),
+                                "reaction": reaction
+                            }),
+                        dataType: 'json',
+                        success: function(data){          
+                            console.log(data)
+                            loadDweets()                      
+                        },
+                        error: function(data){
+                            console.log(data)
+                        }
+                    });
+                }
+
+                postcomment = function(element){
+                    eid = element.id
+                    dweet_id_to_comment = eid.substring('bdweet_'.length)
+                    cid = "ncdweet_" + dweet_id_to_comment
+                    comment = $("#" + cid).val()
+                    console.log(comment)
+                    console.log(dweet_id_to_comment)
+                    
+                    $.ajax({
+                        headers: {
+                            Authorization :"Token " + getCookie("authtoken")
+                        },
+                        url: "/dweetapi/dweet/" + dweet_id_to_comment + "/", 
+                        method: 'PATCH',
+                        contentType: "application/json; charset=utf-8",
+                        data: JSON.stringify({                        
+                            "comments": [{
+                                    "comment": comment
+                                }]
+                            }),
+                        dataType: 'json',
+                        success: function(data){          
+                            console.log(data)   
+                            $("#newtweetarea").val('')   
+                            loadDweets()                      
+                        },
+                        error: function(data){
+                            console.log(data)
+                        }
+                    });
+                }
+
+                function loadDweets(){   
+                    $("#dweetcontainer").html('');                                   
+                    $.ajax({
+                    headers: {
+                        Authorization :"Token " + getCookie("authtoken")
+                    },
+                    url: "/feedapi/feed/", 
+                    method: "GET",
+                    success: function(data){          
+                        console.log(data)
+                        if(data.length == 0){
+                            $("#dweetcontainer").append("<div>" +
+                                "<div class='alert alert-info'> \
+                                    <strong>Info!</strong> No Dweet Feeds are there from the people you follow.!! Starting Dweeting. :) \
+                                </div> \
+                                </div>")
+                        }else{
+                            setMainContainer(data)
+                        }                        
+                    },
+                    error: function(data){
+                        console.log(data)
+                    }
+                    });
+                }         
+
+                function setMainContainer(data){   
+
+                    if(data.length == 0 ){
+                        $("#dweetcontainer").append("<div>" +
+                                "<div class='alert alert-info'> \
+                                    <strong>Info!</strong> No details found \
+                                </div> \
+                                </div>")
+                        return
+                    }                       
+
+                    $.each(data, function(key,value){
+                        dweet_id = "dweet_" + value.id;
+                        dweet = value.dweet_text;
+                        //dweet_last_updated = value.dweet_last_updated;
+                        //dweet_time = value.dweet_time;
+                        user_id= value.dweeted_user[0].id;
+                        username = value.dweeted_user[0].username;
+                        created_time = Date(Date.parse(value.dweeted_relation[0].dweet_last_updated));
+                        comments = value.comments;
+                        likes = value.likes;
+                        dislikes = value.dislikes;
+                        redweet = value.redweet
+
+                        commentstag = "<div class='clearfix comments'>"                                 
+                        commentcont = ""
+                        $.each(comments, function( index, value ) {
+                            user_comment = value.comment
+                            commented_time = Date(Date.parse(value.commented_at))
+                            commented_user_id = value.commented_user.id
+                            commented_user = value.commented_user.username
+                            commentcont = commentcont + 
+                            "<div class='mt-3 media commentcontainer'>" +
+                                "<img class='mr-3' src='{% static 'img/profile_avatar.png' %}' alt='image' style='width:45px;height:45px'>" +
+                                "<div class='media-body'>" +
+                                    "<a class='btn btn-sm userlink' href='/userapi/profile/"+ commented_user_id +"'>" +            
+                                        "<span class='mt-0'>"+  commented_user +"</span>" + 
+                                    "</a> <div style='font-size: 10px'>" + commented_time + 
+                                    "</div><div class='mt-2 comment'>"+
+                                        user_comment +
+                                    "</div>" +
+                                "</div>" +
+                            "</div>";        
+                        });
+
+                        commentstag = commentstag + commentcont + "</div>";
+                        
+                        
+                        $("#dweetcontainer").append(
+                            "<div class='mt-4 media' id='scomment'>\
+                                <img class='mr-3' src='{% static 'img/profile_avatar.png' %}' alt='image' style='width:50px;height:50px'>\
+                                <div class='media-body' id='"+ dweet_id +"'>" +
+                                    "<span class='mt-0'><b><div class='usertitle'><a class='btn btn-sm userlink' href='/userapi/profile/"+ user_id +"/'>" + username + "</a></b></span> <span class='badge badge-light' onclick='followuser(this)' id='"+user_id+"' style='cursor:pointer'>Follow</span>" +
+                                    "</div> <div style='font-size: 10px'>" + created_time + 
+                                    "</div>"+                      
+                                    "<div class='mt-2  dweet'>" + dweet + "</div><br/>" +
+                                    "<div class='mt-1 reaction'> \
+                                        <span class='badge badge-light'>"+ likes +"</span>\
+                                        <i class='btn btn-sm btn-success far fa-thumbs-up' onClick='likeme(this)' id='like_" + dweet_id + "'></i>  \
+                                        <span class='badge badge-light'>"+ dislikes +"</span>\
+                                        <i class='btn btn-sm btn-danger far fa-thumbs-down' onClick='dislikeme(this)' id='dislike_" + dweet_id + "'></i> \
+                                        <span class='badge badge-light'>"+ redweet +"</span>\
+                                        <span class='btn btn-sm btn-warning' style='padding:0 3px' onClick='redweetme(this)' id='re" + dweet_id + "'>retweet</span> \
+                                    </div>" +
+                                    "<br/>" +
+                                    "<div class='mr-3 newcomment'>\
+                                        <div class='form-group'>\
+                                            <textarea class='form-control newcommentarea' placeholder='Your\ comment' id='nc"+ dweet_id +"' rows='2'></textarea>\
+                                        </div>\
+                                        <button type='button' class='btn btn-primary btn-sm float-right' id='b"+ dweet_id +"' onClick='postcomment(this)'>Comment</button>\
+                                    </div>\
+                                    <div class='clearfix visible-xs'></div>\
+                                    <div class='clearfix visible-sm'></div>" +
+                                    commentstag + 
+                                "</div>"+
+                            "</div><hr>"
+                        )
+                    })
+                }
+
+                function setMainContainerForPeople(data){
+                       
+                    if(data.length == 0 ){
+                        $("#dweetcontainer").append("<div>" +
+                                "<div class='alert alert-info'> \
+                                    <strong>Info!</strong> No details found \
+                                </div> \
+                                </div>")
+                        return
+                    }  
+                    $.each(data, function(key,value){
+                        uid = value.id
+                        user_id = "user_" + value.id;                                        
+                        username = value.username;
+                        location_ = value.location;
+                                         
+                        
+                        $("#dweetcontainer").append(
+                            "<div class='mt-4 media' id='scomment'>\
+                                <img class='mr-3' src='{% static 'img/profile_avatar.png' %}' alt='image' style='width:50px;height:50px'>\
+                                <div class='media-body' id='"+ user_id +"'>" +
+                                    "<span class='mt-0'><b><div class='usertitle'><a class='btn btn-sm userlink' href='/userapi/profile/"+ uid +"' id='funame_"+ uid + "'>" + username + "</a></b></span> <span class='badge badge-light' onclick='followuser(this)' id='"+user_id+"' style='cursor:pointer'>Follow</span> </div>"    +     
+                                    "<div>"+location_+"</div>"+
+                                    "<div class='clearfix visible-xs'></div>\
+                                    <div class='clearfix visible-sm'></div>" +
+                                "</div>"+
+                            "</div><hr>"
+                        );
+                    })
+                }
+
+                $("#posttweet").click(function(){
+                        dweet_text = $("#newtweetarea").val()
+                        $.ajax({
+                            headers: {
+                                Authorization :"Token " + $.cookie("authtoken")
+                            },
+                            url: "/dweetapi/dweet/",                         
+                            method: 'POST',
+                            contentType: 'application/json; charset=utf-8',
+                            data: JSON.stringify({
+                                'dweet_text': dweet_text,
+                                'comments': []
+                                }),
+                            dataType: 'json',
+                            success: function(data){          
+                                console.log(data)   
+                                $("#newtweetarea").val('')
+                                $("#dweetcontainer").html('')
+                                $("#newtweetareanotification").append("<div>" +
+                                    "<div class='alert alert-success alert-dismissible'> \
+                                        <a href='#' class='close' data-dismiss='alert' aria-label='close'>&times;</a>\
+                                        <strong>Success!</strong> Your Dweet is posted :) Please check Dweets in your profile. \
+                                    </div> \
+                                    </div>")
+                                loadDweets()                      
+                            },
+                            error: function(data){
+                                console.log(data)
+                                alert(data.responseJSON.dweet_text)
+                            }
+                        });
+                }); 
+                function getCookie(name){
+                    return $.cookie(name) 
+                }
+                $("#usernamedp").text( getCookie("authuname"))
+                $("#usernamedp").append("<span id='" + getCookie("authuser_id") +"'</span>")
+        });
+        </script>
+    </body>
+</html>

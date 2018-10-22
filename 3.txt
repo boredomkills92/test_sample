@@ -1,0 +1,56 @@
+from django.shortcuts import render
+from django.core.exceptions import ObjectDoesNotExist
+
+from rest_framework import viewsets
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import filters
+
+from .serializers import DweetRelationSerializer
+from .serializers import CommentSerializer
+
+
+from .models import Dweet
+from .models import DweetRelation
+from .models import Comments
+from .permissions import PostOwnDweet
+
+from userprofile.models import UserProfile
+
+# Create your views here.
+
+class DweetViewSet(viewsets.ModelViewSet):
+    """
+    provides crude rest api calls for Dweet
+    """
+    
+    authentication_classes = (TokenAuthentication, )
+    permission_classes = (PostOwnDweet, IsAuthenticated, )
+
+    serializer_class = DweetRelationSerializer
+    queryset = DweetRelation.objects.all()
+    
+    filter_backends = (filters.SearchFilter, )
+    search_fields = ('dweet')
+
+    """
+    provides crude rest api calls for Comments
+    """
+
+class CommentViewSet(viewsets.ViewSet):
+    """
+    provides crude rest api calls for Comments
+    """
+
+    authentication_classes = (TokenAuthentication, )
+    permission_classes = (PostOwnDweet, IsAuthenticated, )
+
+    serializer_class = CommentSerializer
+    queryset = Comments.objects.all()
+
+    def perform_create(self, serializer):
+        serializer.save(commented_user=self.request.user)
+
